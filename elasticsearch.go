@@ -32,6 +32,7 @@ type ESRequestResponse struct {
 	ReqURL               string `json:"Req_URL"`
 	ReqMethod            string `json:"Req_Method"`
 	ReqTraceID           string `json:"Req_Trace-ID"`
+	ReqMSTrafficKey      string `json:"Req_MS-Traffic-Key"` // MirrorSphere流量标识（值为流量录制计划key）
 	ReqUserAgent         string `json:"Req_User-Agent"`
 	ReqAcceptLanguage    string `json:"Req_Accept-Language,omitempty"`
 	ReqAccept            string `json:"Req_Accept,omitempty"`
@@ -139,6 +140,7 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 		ReqURL:               string(proto.Path(req)),
 		ReqMethod:            string(proto.Method(req)),
 		ReqTraceID:           string(proto.Header(req, []byte("X-Trace-ID"))),
+		ReqMSTrafficKey:      string(proto.Header(req, []byte("MS-Traffic-Key"))),
 		ReqUserAgent:         string(proto.Header(req, []byte("User-Agent"))),
 		ReqAcceptLanguage:    string(proto.Header(req, []byte("Accept-Language"))),
 		ReqAccept:            string(proto.Header(req, []byte("Accept"))),
