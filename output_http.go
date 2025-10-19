@@ -344,7 +344,10 @@ func (o *HTTPOutput) sendRequest(client *HTTPClient, msg *Message) {
 	}
 
 	if o.elasticSearch != nil {
-		o.elasticSearch.ResponseAnalyze(msg.Data, resp, start, stop)
+		// 增加goreplay捕获的原始请求id，即uuid（注意这不是应用服务的X-Trace-ID，而是goreplay工具自带的请求id）
+		// 增加goreplay回放的目标主机，即output-http的地址
+		respHost := []byte(client.config.rawURL)
+		o.elasticSearch.ResponseAnalyze(uuid, msg.Data, resp, respHost, start, stop)
 	}
 }
 

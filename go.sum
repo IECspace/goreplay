@@ -1,6 +1,10 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/IECspace/elastigo v0.0.0-20251019035038-1b740226f412 h1:AmyujVd4cTOfrHsLj9j9qsZwUsMpOPxBHtBDaY0/Kbg=
+github.com/IECspace/elastigo v0.0.0-20251019035038-1b740226f412/go.mod h1:3mcVSLImvbFiLMa43xb8My1z6poKVufxJNMt2QEN2So=
+github.com/IECspace/elastigo v0.0.0-20251019040627-e10b8d1c77e3 h1:75vOkYIXgHZNd028bYmv8M0tpdUd0IcMvpkozAL/28Q=
+github.com/IECspace/elastigo v0.0.0-20251019040627-e10b8d1c77e3/go.mod h1:3mcVSLImvbFiLMa43xb8My1z6poKVufxJNMt2QEN2So=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
 github.com/Shopify/sarama v1.38.1/go.mod h1:iwv9a67Ha8VNa+TifujYoWGxWnu2kNVAQdSdZ4X2o5g=

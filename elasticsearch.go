@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	elastigo "github.com/mattbaird/elastigo/lib"
+	elastigo "github.com/IECspace/elastigo/lib"
 )
 
 type ESUriErorr struct{}
@@ -28,8 +28,10 @@ type ESPlugin struct {
 }
 
 type ESRequestResponse struct {
+	ReqPayloadID         string `json:"Req_Payload-ID"` // goreplay工具为录制的每个流量请求生成的唯一id,多个回放目标具有相同的Req_Payload-ID
 	ReqURL               string `json:"Req_URL"`
 	ReqMethod            string `json:"Req_Method"`
+	ReqTraceID           string `json:"Req_Trace-ID"`
 	ReqUserAgent         string `json:"Req_User-Agent"`
 	ReqAcceptLanguage    string `json:"Req_Accept-Language,omitempty"`
 	ReqAccept            string `json:"Req_Accept,omitempty"`
@@ -37,8 +39,8 @@ type ESRequestResponse struct {
 	ReqIfModifiedSince   string `json:"Req_If-Modified-Since,omitempty"`
 	ReqConnection        string `json:"Req_Connection,omitempty"`
 	ReqCookies           string `json:"Req_Cookies,omitempty"`
+	RespHost             string `json:"Resp_Host"`
 	RespStatus           string `json:"Resp_Status"`
-	RespStatusCode       string `json:"Resp_Status-Code"`
 	RespProto            string `json:"Resp_Proto,omitempty"`
 	RespContentLength    string `json:"Resp_Content-Length,omitempty"`
 	RespContentType      string `json:"Resp_Content-Type,omitempty"`
@@ -124,7 +126,7 @@ func (p *ESPlugin) RttDurationToMs(d time.Duration) int64 {
 }
 
 // ResponseAnalyze send req and resp to ES
-func (p *ESPlugin) ResponseAnalyze(req, resp []byte, start, stop time.Time) {
+func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop time.Time) {
 	if len(resp) == 0 {
 		// nil http response - skipped elasticsearch export for this request
 		return
@@ -133,8 +135,10 @@ func (p *ESPlugin) ResponseAnalyze(req, resp []byte, start, stop time.Time) {
 	rtt := p.RttDurationToMs(stop.Sub(start))
 
 	esResp := ESRequestResponse{
+		ReqPayloadID:         string(uuid),
 		ReqURL:               string(proto.Path(req)),
 		ReqMethod:            string(proto.Method(req)),
+		ReqTraceID:           string(proto.Header(req, []byte("X-Trace-ID"))),
 		ReqUserAgent:         string(proto.Header(req, []byte("User-Agent"))),
 		ReqAcceptLanguage:    string(proto.Header(req, []byte("Accept-Language"))),
 		ReqAccept:            string(proto.Header(req, []byte("Accept"))),
@@ -142,8 +146,8 @@ func (p *ESPlugin) ResponseAnalyze(req, resp []byte, start, stop time.Time) {
 		ReqIfModifiedSince:   string(proto.Header(req, []byte("If-Modified-Since"))),
 		ReqConnection:        string(proto.Header(req, []byte("Connection"))),
 		ReqCookies:           string(proto.Header(req, []byte("Cookie"))),
+		RespHost:             string(respHost),
 		RespStatus:           string(proto.Status(resp)),
-		RespStatusCode:       string(proto.Status(resp)),
 		RespProto:            string(proto.Method(resp)),
 		RespContentLength:    string(proto.Header(resp, []byte("Content-Length"))),
 		RespContentType:      string(proto.Header(resp, []byte("Content-Type"))),
