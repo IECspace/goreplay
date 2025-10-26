@@ -6,7 +6,6 @@ import (
 	"expvar"
 	"flag"
 	"fmt"
-	"github.com/buger/goreplay"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -17,6 +16,9 @@ import (
 	"runtime/pprof"
 	"syscall"
 	"time"
+
+	"github.com/buger/goreplay"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -108,6 +110,9 @@ func main() {
 		}()
 	}
 
+	// prometheus
+	go prome()
+
 	closeCh := make(chan int)
 	emitter := goreplay.NewEmitter()
 	go emitter.Start(plugins, goreplay.Settings.Middleware)
@@ -158,4 +163,20 @@ func profileMEM(memprofile string) {
 			f.Close()
 		})
 	}
+}
+
+// If prometheus is not disabled, statistical indicators
+func prome() {
+	if goreplay.Settings.PrometheusDisabled == false {
+		err := goreplay.NewPromeStat()
+		if err != nil {
+			log.Println("Error create prometheus:" + err.Error())
+			return
+		}
+		http.Handle(goreplay.Settings.PrometheusPath, promhttp.Handler())
+		if e := http.ListenAndServe(goreplay.Settings.PrometheusPort, nil); e != nil {
+			log.Println("Error starting HTTP server for prometheus: " + e.Error())
+		}
+	}
+	return
 }

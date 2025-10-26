@@ -62,7 +62,7 @@ func NewWebSocketOutput(address string, config *WebSocketOutputConfig) PluginWri
 	o.address = u.String()
 
 	if Settings.OutputWebSocketStats {
-		o.bufStats = NewGorStat("output_ws", 5000)
+		o.bufStats = NewGorStat("output_ws", address, 5000)
 	}
 
 	// create X buffers and send the buffer index to the worker

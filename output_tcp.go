@@ -43,7 +43,7 @@ func NewTCPOutput(address string, config *TCPOutputConfig) PluginWriter {
 	o.config = config
 
 	if Settings.OutputTCPStats {
-		o.bufStats = NewGorStat("output_tcp", 5000)
+		o.bufStats = NewGorStat("output_tcp", address, 5000)
 	}
 
 	// create X buffers and send the buffer index to the worker

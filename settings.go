@@ -114,6 +114,10 @@ type AppSettings struct {
 	InputKafkaConfig  InputKafkaConfig
 	OutputKafkaConfig OutputKafkaConfig
 	KafkaTLSConfig    KafkaTLSConfig
+
+	PrometheusDisabled bool   `json:"prome-disabled"`
+	PrometheusPort     string `json:"prome-port"`
+	PrometheusPath     string `json:"prome-path"`
 }
 
 // Settings holds Gor configuration
@@ -275,6 +279,10 @@ func init() {
 	Settings.OutputFileConfig.OutputFileMaxSize = 1099511627776
 	Settings.CopyBufferSize = 5242880
 
+	// prometheus metrics
+	flag.BoolVar(&Settings.PrometheusDisabled, "prome-disabled", false, "Disable Prometheus metrics server.")
+	flag.StringVar(&Settings.PrometheusPort, "prome-port", ":30991", "Enable Prometheus metrics server. Starts http server on specified port, exposing metrics on /metrics endpoint. Default: `:9272`")
+	flag.StringVar(&Settings.PrometheusPath, "prome-path", "/metrics", "Path to expose Prometheus metrics. Default is /metrics")
 }
 
 func CheckSettings() {
