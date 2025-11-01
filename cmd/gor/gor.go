@@ -125,11 +125,15 @@ func main() {
 		})
 	}
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
 	exit := 0
 	select {
-	case <-c:
-		exit = 1
+	case s := <-c:
+		if s == syscall.SIGTERM {
+			exit = 2
+		} else {
+			exit = 1
+		}
 	case <-closeCh:
 		exit = 0
 	}
