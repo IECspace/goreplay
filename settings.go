@@ -281,7 +281,7 @@ func init() {
 
 	// prometheus metrics
 	flag.BoolVar(&Settings.PrometheusDisabled, "prome-disabled", false, "Disable Prometheus metrics server.")
-	flag.StringVar(&Settings.PrometheusPort, "prome-port", ":30991", "Enable Prometheus metrics server. Starts http server on specified port, exposing metrics on /metrics endpoint. Default: `:9272`")
+	flag.StringVar(&Settings.PrometheusPort, "prome-port", ":30991", "Enable Prometheus metrics server. Starts http server on specified port, exposing metrics on /metrics endpoint. Default: `:30991`")
 	flag.StringVar(&Settings.PrometheusPath, "prome-path", "/metrics", "Path to expose Prometheus metrics. Default is /metrics")
 }
 
