@@ -19,6 +19,8 @@ package proto
 import (
 	"bufio"
 	"bytes"
+	"strconv"
+
 	"github.com/buger/goreplay/internal/byteutils"
 
 	_ "fmt"
@@ -283,6 +285,148 @@ func SetPathParam(payload, name, value []byte) []byte {
 	copy(newPath[len(path):], newParam)
 
 	return SetPath(payload, newPath)
+}
+
+// SetBodyParam takes payload and updates Body attribute
+// If body param not found, it will append new
+// Returns modified payload
+func SetBodyParam(payload, name, value []byte) []byte {
+	// get Content-Type
+	ct := Header(payload, []byte("Content-Type"))
+	if ct == nil {
+		return payload
+	}
+
+	// read body
+	body := Body(payload)
+	if body == nil {
+		return payload
+	}
+
+	var newBody []byte
+
+	// ---- Case 1: application/x-www-form-urlencoded ----
+	if bytes.HasPrefix(ct, []byte("application/x-www-form-urlencoded")) {
+		newBody = setFormURLEncodedBody(body, name, value)
+		return applyNewBodyWithUpdatedLength(payload, body, newBody)
+	}
+
+	// ---- Case 2: application/json ----
+	if bytes.HasPrefix(ct, []byte("application/json")) {
+		newBody = setJSONBody(body, name, value)
+		return applyNewBodyWithUpdatedLength(payload, body, newBody)
+	}
+
+	// Other content types are not processed
+	return payload
+}
+
+// setFormURLEncoded sets form-urlencoded body parameter, if not found appends new one
+func setFormURLEncodedBody(body, name, value []byte) []byte {
+	kv := append(name, '=')
+	idx := bytes.Index(body, kv)
+
+	if idx == -1 {
+		// append: &key=value
+		add := make([]byte, len(name)+len(value)+2)
+		add[0] = '&'
+		copy(add[1:], name)
+		add[1+len(name)] = '='
+		copy(add[2+len(name):], value)
+		return append(body, add...)
+	}
+
+	// replace existing value
+	valStart := idx + len(kv)
+	valEnd := valStart
+	for valEnd < len(body) && body[valEnd] != '&' {
+		valEnd++
+	}
+
+	return byteutils.Replace(body, valStart, valEnd, value)
+}
+
+// setJSONParam sets JSON body parameter, if not found appends new one
+func setJSONBody(body, name, value []byte) []byte {
+	// find "name"
+	quotedKey := append([]byte(`"`), append(name, '"')...)
+	idx := bytes.Index(body, quotedKey)
+
+	if idx == -1 {
+		// append field   ,"name":value
+		insert := make([]byte, len(quotedKey)+len(value)+2)
+		insert[0] = ','
+		copy(insert[1:], quotedKey)
+		insert[1+len(quotedKey)] = ':'
+		copy(insert[2+len(quotedKey):], value)
+		end := bytes.LastIndex(body, []byte("}"))
+		if end == -1 {
+			return body
+		}
+		return byteutils.Insert(body, end, insert)
+	}
+
+	// key exists → found: the starting and ending positions of the following values
+	colon := idx + len(quotedKey)
+	for colon < len(body) && (body[colon] == ' ' || body[colon] == ':') {
+		colon++
+	}
+
+	valStart := colon
+	valEnd := colon
+
+	// JSON value type：string, object, number, bool, null
+	switch body[valStart] {
+	case '"': // string
+		valEnd++
+		for valEnd < len(body) && body[valEnd] != '"' {
+			valEnd++
+		}
+		valEnd++ // include closing "
+	case '{': // object
+		braces := 1
+		valEnd++
+		for valEnd < len(body) && braces > 0 {
+			if body[valEnd] == '{' {
+				braces++
+			} else if body[valEnd] == '}' {
+				braces--
+			}
+			valEnd++
+		}
+	default: // number/bool/null
+		for valEnd < len(body) && body[valEnd] != ',' && body[valEnd] != '}' {
+			valEnd++
+		}
+	}
+
+	// replace old value with new value,return new body
+	return byteutils.Replace(body, valStart, valEnd, value)
+}
+
+// applyNewBodyWithUpdatedLength replaces body in payload and updates Content-Length header if necessary
+func applyNewBodyWithUpdatedLength(payload, oldBody, newBody []byte) []byte {
+	if bytes.Equal(oldBody, newBody) {
+		return payload
+	}
+
+	// If chunked, do NOT modify Content-Length
+	te := Header(payload, []byte("Transfer-Encoding"))
+	chunked := len(te) > 0 && bytes.Contains(te, []byte("chunked"))
+
+	bodyStart := len(payload) - len(oldBody)
+	bodyEnd := len(payload)
+
+	// Replace body
+	payload = byteutils.Replace(payload, bodyStart, bodyEnd, newBody)
+
+	// update content-length only when NOT chunked
+	if !chunked {
+		newCL := []byte(strconv.Itoa(len(newBody)))
+		payload = SetHeader(payload, []byte("Content-Length"), newCL)
+	}
+
+	return payload
 }
 
 // SetHost updates Host header for HTTP/1.1 or updates host in path for HTTP/1.0 or Proxy requests

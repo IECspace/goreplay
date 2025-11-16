@@ -20,6 +20,7 @@ type HTTPModifierConfig struct {
 	HeaderHashFilters      HTTPHashFilters            `json:"http-header-limiter"`
 	ParamHashFilters       HTTPHashFilters            `json:"http-param-limiter"`
 	Params                 HTTPParams                 `json:"http-set-param"`
+	BodyParams             HTTPBodyParams             `json:"http-set-body-param"`
 	Headers                HTTPHeaders                `json:"http-set-header"`
 	Methods                HTTPMethods                `json:"http-allow-method"`
 }
@@ -173,6 +174,35 @@ func (h *HTTPParams) Set(value string) error {
 	}
 
 	param := httpParam{
+		[]byte(strings.TrimSpace(v[0])),
+		[]byte(strings.TrimSpace(v[1])),
+	}
+
+	*h = append(*h, param)
+	return nil
+}
+
+// Handling of --http-set-body-param option
+type httpBodyParam struct {
+	Name  []byte
+	Value []byte
+}
+
+// HTTPBodyParams filters for --http-set-body-param
+type HTTPBodyParams []httpBodyParam
+
+func (h *HTTPBodyParams) String() string {
+	return fmt.Sprint(*h)
+}
+
+// Set method to implement flags.Value
+func (h *HTTPBodyParams) Set(value string) error {
+	v := strings.SplitN(value, "=", 2)
+	if len(v) != 2 {
+		return errors.New("Expected `Key=Value`")
+	}
+
+	param := httpBodyParam{
 		[]byte(strings.TrimSpace(v[0])),
 		[]byte(strings.TrimSpace(v[1])),
 	}

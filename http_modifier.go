@@ -3,9 +3,10 @@ package goreplay
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/buger/goreplay/proto"
 	"hash/fnv"
 	"strings"
+
+	"github.com/buger/goreplay/proto"
 )
 
 type HTTPModifier struct {
@@ -24,6 +25,7 @@ func NewHTTPModifier(config *HTTPModifierConfig) *HTTPModifier {
 		len(config.HeaderHashFilters) == 0 &&
 		len(config.ParamHashFilters) == 0 &&
 		len(config.Params) == 0 &&
+		len(config.BodyParams) == 0 &&
 		len(config.Headers) == 0 &&
 		len(config.Methods) == 0 {
 		return nil
@@ -63,6 +65,13 @@ func (m *HTTPModifier) Rewrite(payload []byte) (response []byte) {
 	if len(m.config.Params) > 0 {
 		for _, param := range m.config.Params {
 			payload = proto.SetPathParam(payload, param.Name, param.Value)
+		}
+	}
+
+	// Added support for http-set-body-param, Set body params last to ensure content-length is properly set
+	if len(m.config.BodyParams) > 0 {
+		for _, param := range m.config.BodyParams {
+			payload = proto.SetBodyParam(payload, param.Name, param.Value)
 		}
 	}
 

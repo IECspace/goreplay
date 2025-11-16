@@ -2,8 +2,9 @@ package goreplay
 
 import (
 	"bytes"
-	"github.com/buger/goreplay/proto"
 	"testing"
+
+	"github.com/buger/goreplay/proto"
 )
 
 func TestHTTPModifierWithoutConfig(t *testing.T) {
@@ -315,5 +316,39 @@ func TestHTTPModifierSetParam(t *testing.T) {
 
 	if payload = modifier.Rewrite(payload); !bytes.Equal(payloadAfter, payload) {
 		t.Error("Should override param", string(payload))
+	}
+}
+
+func TestHTTPModifierSetUrlencodedBodyParam(t *testing.T) {
+	filters := HTTPBodyParams{}
+	filters.Set("a=6")
+	filters.Set("c=3")
+
+	modifier := NewHTTPModifier(&HTTPModifierConfig{
+		BodyParams: filters,
+	})
+
+	payload := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 7\r\nContent-Type: application/x-www-form-urlencoded\r\nHost: www.w3.org\r\n\r\na=1&b=2")
+	payloadAfter := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 11\r\nContent-Type: application/x-www-form-urlencoded\r\nHost: www.w3.org\r\n\r\na=6&b=2&c=3")
+
+	if payload = modifier.Rewrite(payload); !bytes.Equal(payloadAfter, payload) {
+		t.Error("Should override param", string(payload))
+	}
+}
+
+func TestHTTPModifierSetJsonBodyParam(t *testing.T) {
+	filters := HTTPBodyParams{}
+	filters.Set("a=12")
+	filters.Set("b=\"11\"")
+
+	modifier := NewHTTPModifier(&HTTPModifierConfig{
+		BodyParams: filters,
+	})
+
+	payload := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 7\r\nContent-Type: application/json\r\nHost: www.w3.org\r\n\r\n{\"a\":11}")
+	payloadAfter := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 17\r\nContent-Type: application/json\r\nHost: www.w3.org\r\n\r\n{\"a\":12,\"b\":\"11\"}")
+
+	if payload = modifier.Rewrite(payload); !bytes.Equal(payloadAfter, payload) {
+		t.Error("Should override param", string(payload), len(proto.Body(payloadAfter)))
 	}
 }
