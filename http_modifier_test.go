@@ -306,6 +306,7 @@ func TestHTTPModifierSetHeader(t *testing.T) {
 func TestHTTPModifierSetParam(t *testing.T) {
 	filters := HTTPParams{}
 	filters.Set("api_key=1")
+	filters.Set("api_name={#string_2_2#}")
 
 	modifier := NewHTTPModifier(&HTTPModifierConfig{
 		Params: filters,
@@ -322,7 +323,7 @@ func TestHTTPModifierSetParam(t *testing.T) {
 func TestHTTPModifierSetUrlencodedBodyParam(t *testing.T) {
 	filters := HTTPBodyParams{}
 	filters.Set("a=6")
-	filters.Set("c=3")
+	filters.Set("c={#int_10_30#}")
 
 	modifier := NewHTTPModifier(&HTTPModifierConfig{
 		BodyParams: filters,
@@ -338,15 +339,16 @@ func TestHTTPModifierSetUrlencodedBodyParam(t *testing.T) {
 
 func TestHTTPModifierSetJsonBodyParam(t *testing.T) {
 	filters := HTTPBodyParams{}
-	filters.Set("a=12")
-	filters.Set("b=\"11\"")
+	filters.Set("b=\"ac\"")
+	filters.Set("c=3.23")
+	filters.Set("m={#float_-1.2_-1.123_2#}")
 
 	modifier := NewHTTPModifier(&HTTPModifierConfig{
 		BodyParams: filters,
 	})
 
-	payload := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 7\r\nContent-Type: application/json\r\nHost: www.w3.org\r\n\r\n{\"a\":11}")
-	payloadAfter := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 17\r\nContent-Type: application/json\r\nHost: www.w3.org\r\n\r\n{\"a\":12,\"b\":\"11\"}")
+	payload := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 7\r\nContent-Type: application/json\r\nHost: www.w3.org\r\n\r\n{\"b\":\"b\"}")
+	payloadAfter := []byte("POST /post?api_key=1234 HTTP/1.1\r\nContent-Length: 18\r\nContent-Type: application/json\r\nHost: www.w3.org\r\n\r\n{\"b\":\"ac\",\"m\":123}")
 
 	if payload = modifier.Rewrite(payload); !bytes.Equal(payloadAfter, payload) {
 		t.Error("Should override param", string(payload), len(proto.Body(payloadAfter)))

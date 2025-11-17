@@ -19,6 +19,8 @@ package proto
 import (
 	"bufio"
 	"bytes"
+	"fmt"
+	"math/rand"
 	"strconv"
 
 	"github.com/buger/goreplay/internal/byteutils"
@@ -256,6 +258,9 @@ func SetPathParam(payload, name, value []byte) []byte {
 	path := Path(payload)
 	_, vs, ve := PathParam(payload, name)
 
+	// replace value
+	value = replacePlaceholders(value)
+
 	if vs != -1 { // If param found, replace its value and set new Path
 		newPath := make([]byte, len(path))
 		copy(newPath, path)
@@ -303,17 +308,24 @@ func SetBodyParam(payload, name, value []byte) []byte {
 		return payload
 	}
 
+	// replace value
+	value = replacePlaceholders(value)
+
 	var newBody []byte
 
 	// ---- Case 1: application/x-www-form-urlencoded ----
 	if bytes.HasPrefix(ct, []byte("application/x-www-form-urlencoded")) {
-		newBody = setFormURLEncodedBody(body, name, value)
+		tmpBody := make([]byte, len(body))
+		copy(tmpBody, body)
+		newBody = setFormURLEncodedBody(tmpBody, name, value)
 		return applyNewBodyWithUpdatedLength(payload, body, newBody)
 	}
 
 	// ---- Case 2: application/json ----
 	if bytes.HasPrefix(ct, []byte("application/json")) {
-		newBody = setJSONBody(body, name, value)
+		tmpBody := make([]byte, len(body))
+		copy(tmpBody, body)
+		newBody = setJSONBody(tmpBody, name, value)
 		return applyNewBodyWithUpdatedLength(payload, body, newBody)
 	}
 
@@ -763,4 +775,100 @@ var hexTable = [128]byte{
 	'e': 14,
 	'F': 15,
 	'f': 15,
+}
+
+// replacePlaceholders replaces placeholders in the input byte slice.
+// Placeholders are in the format {#type_min_max#} or {#type_min_max_length#}(when type is float), e.g., {#int_0_100#}, {#float_0.1_1.2_2#}, {#string_5_10#}.
+// {#int_0_100#} represents an integer from 0 to 100
+// {#float_0.01_1.2_2#} represents a float from 0.01 to 1.2 with 2 decimal places
+// {#string_5_10#} represents a random string with length between 5 and 10
+// It returns a new byte slice with the placeholders replaced by generated values.
+func replacePlaceholders(in []byte) []byte {
+	buf := make([]byte, 0, len(in))
+	i := 0
+
+	for i < len(in) {
+		// Identify placeholder start "{#"
+		if i+1 < len(in) && in[i] == '{' && in[i+1] == '#' {
+			// Identify placeholder end "#}"
+			end := bytes.Index(in[i+2:], []byte("#}"))
+			if end == -1 {
+				buf = append(buf, in[i])
+				i++
+				continue
+			}
+
+			end = i + 2 + end
+
+			// Extract placeholder content, remove {# and #}
+			content := string(in[i+2 : end])
+
+			repl := generateByPlaceholder([]byte(content))
+			if repl != nil {
+				buf = append(buf, repl...)
+				i = end + 2 // skip "#}"
+				continue
+			}
+		}
+
+		buf = append(buf, in[i])
+		i++
+	}
+
+	return buf
+}
+
+// generateByPlaceholder generates value by placeholder string, like int_0_100 or string_5_10 or float_0.01_1.2_2
+func generateByPlaceholder(s []byte) []byte {
+	// split by "_", divided into three sections, like int_0_100
+	parts := bytes.Split(s, []byte("_"))
+	if len(parts) < 3 {
+		return s
+	}
+
+	// first part is type
+	kind := string(parts[0])
+
+	switch kind {
+	case "int":
+		minx, err1 := strconv.ParseInt(string(parts[1]), 10, 64)
+		maxx, err2 := strconv.ParseInt(string(parts[2]), 10, 64)
+		if err1 != nil || err2 != nil || maxx < minx {
+			return s
+		}
+		v := minx + rand.Int63n(maxx-minx+1)
+		return []byte(strconv.FormatInt(v, 10))
+	case "float":
+		if len(parts) != 4 {
+			return s
+		}
+		minx, err1 := strconv.ParseFloat(string(parts[1]), 64)
+		maxx, err2 := strconv.ParseFloat(string(parts[2]), 64)
+		precision, err3 := strconv.Atoi(string(parts[3]))
+		if err1 != nil || err2 != nil || err3 != nil || maxx < minx {
+			return s
+		}
+		f := minx + rand.Float64()*(maxx-minx)
+		format := "%." + strconv.Itoa(precision) + "f"
+		return []byte(fmt.Sprintf(format, f))
+	case "string":
+		minx, err1 := strconv.Atoi(string(parts[1]))
+		maxx, err2 := strconv.Atoi(string(parts[2]))
+		if err1 != nil || err2 != nil || maxx < minx {
+			return s
+		}
+		n := rand.Intn(maxx-minx+1) + minx
+		return randomBytes(n)
+	}
+	return s
+}
+
+// randomBytes generates random bytes of length n
+func randomBytes(n int) []byte {
+	var letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return b
 }
