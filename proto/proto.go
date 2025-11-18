@@ -474,7 +474,7 @@ func Method(payload []byte) []byte {
 // Status returns response status.
 // It happens to be in same position as request payload path
 func Status(payload []byte) []byte {
-	if !HasResponseTitle(payload) {
+	if !HasResponseTitleFork(payload) {
 		return nil
 	}
 	start := bytes.IndexByte(payload, ' ') + 1
@@ -510,6 +510,36 @@ func HasResponseTitle(payload []byte) bool {
 	}
 	major, minor, ok := http.ParseHTTPVersion(s[0:VersionLen])
 	if !(ok && major == 1 && (minor == 0 || minor == 1)) {
+		return false
+	}
+	if s[VersionLen] != ' ' {
+		return false
+	}
+	status, ok := atoI(payload[VersionLen+1:VersionLen+4], 10)
+	if !ok {
+		return false
+	}
+	// only validate status codes mentioned in rfc2616.
+	if http.StatusText(status) == "" {
+		return false
+	}
+	// handle cases from #875
+	return payload[VersionLen+4] == ' ' || payload[VersionLen+4] == '\r'
+}
+
+// HasResponseTitleFork reports whether this payload has an HTTP/1 or HTTP/2 response title
+// The HasResponseTitleFork is only called by the Status method
+func HasResponseTitleFork(payload []byte) bool {
+	s := byteutils.SliceToString(payload)
+	if len(s) < MinResponseCount {
+		return false
+	}
+	titleLen := bytes.Index(payload, CRLF)
+	if titleLen == -1 {
+		return false
+	}
+	major, minor, ok := http.ParseHTTPVersion(s[0:VersionLen])
+	if !(ok && (major == 1 || major == 2) && (minor == 0 || minor == 1)) {
 		return false
 	}
 	if s[VersionLen] != ' ' {

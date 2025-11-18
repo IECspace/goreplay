@@ -260,6 +260,10 @@ func TestStatus(t *testing.T) {
 	if status = Status(payload); !bytes.Equal(status, []byte("404")) {
 		t.Error("2Should find status 404 but:", string(status))
 	}
+	payload = []byte("HTTP/2.0 400 Bad Request\r\n")
+	if status = Status(payload); !bytes.Equal(status, []byte("400")) {
+		t.Error("3Should find status 400 but:", string(status))
+	}
 }
 
 func TestSetPath(t *testing.T) {

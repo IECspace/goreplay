@@ -2,11 +2,12 @@ package goreplay
 
 import (
 	"encoding/json"
-	"github.com/buger/goreplay/proto"
 	"log"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/buger/goreplay/proto"
 
 	elastigo "github.com/IECspace/elastigo/lib"
 )
@@ -40,9 +41,11 @@ type ESRequestResponse struct {
 	ReqIfModifiedSince   string `json:"Req_If-Modified-Since,omitempty"`
 	ReqConnection        string `json:"Req_Connection,omitempty"`
 	ReqCookies           string `json:"Req_Cookies,omitempty"`
+	ReqBody              string `json:"Req_Body,omitempty"`
 	RespHost             string `json:"Resp_Host"`
 	RespStatus           string `json:"Resp_Status"`
 	RespProto            string `json:"Resp_Proto,omitempty"`
+	RespBody             string `json:"Resp_Body"`
 	RespContentLength    string `json:"Resp_Content-Length,omitempty"`
 	RespContentType      string `json:"Resp_Content-Type,omitempty"`
 	RespTransferEncoding string `json:"Resp_Transfer-Encoding,omitempty"`
@@ -148,9 +151,11 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 		ReqIfModifiedSince:   string(proto.Header(req, []byte("If-Modified-Since"))),
 		ReqConnection:        string(proto.Header(req, []byte("Connection"))),
 		ReqCookies:           string(proto.Header(req, []byte("Cookie"))),
+		ReqBody:              string(proto.Body(req)),
 		RespHost:             string(respHost),
 		RespStatus:           string(proto.Status(resp)),
 		RespProto:            string(proto.Method(resp)),
+		RespBody:             string(proto.Body(resp)),
 		RespContentLength:    string(proto.Header(resp, []byte("Content-Length"))),
 		RespContentType:      string(proto.Header(resp, []byte("Content-Type"))),
 		RespTransferEncoding: string(proto.Header(resp, []byte("Transfer-Encoding"))),
