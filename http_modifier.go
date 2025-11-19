@@ -27,6 +27,7 @@ func NewHTTPModifier(config *HTTPModifierConfig) *HTTPModifier {
 		len(config.Params) == 0 &&
 		len(config.BodyParams) == 0 &&
 		len(config.Headers) == 0 &&
+		len(config.HeadersRename) == 0 &&
 		len(config.Methods) == 0 {
 		return nil
 	}
@@ -59,6 +60,13 @@ func (m *HTTPModifier) Rewrite(payload []byte) (response []byte) {
 	if len(m.config.Headers) > 0 {
 		for _, header := range m.config.Headers {
 			payload = proto.SetHeader(payload, []byte(header.Name), []byte(header.Value))
+		}
+	}
+
+	// Added support for http-rename-header
+	if len(m.config.HeadersRename) > 0 {
+		for _, header := range m.config.HeadersRename {
+			payload = proto.RenameHeader(payload, []byte(header.OldName), []byte(header.NewName))
 		}
 	}
 

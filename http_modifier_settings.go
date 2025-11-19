@@ -22,6 +22,7 @@ type HTTPModifierConfig struct {
 	Params                 HTTPParams                 `json:"http-set-param"`
 	BodyParams             HTTPBodyParams             `json:"http-set-body-param"`
 	Headers                HTTPHeaders                `json:"http-set-header"`
+	HeadersRename          HTTPHeadersRename          `json:"http-rename-header"`
 	Methods                HTTPMethods                `json:"http-allow-method"`
 }
 
@@ -145,6 +146,34 @@ func (h *HTTPHeaders) Set(value string) error {
 	}
 
 	header := httpHeader{
+		strings.TrimSpace(v[0]),
+		strings.TrimSpace(v[1]),
+	}
+
+	*h = append(*h, header)
+	return nil
+}
+
+type httpHeaderName struct {
+	OldName string
+	NewName string
+}
+
+// HTTPHeadersRename is a slice of headers that will be renamed
+type HTTPHeadersRename []httpHeaderName
+
+func (h *HTTPHeadersRename) String() string {
+	return fmt.Sprint(*h)
+}
+
+// Set method to implement flags.Value
+func (h *HTTPHeadersRename) Set(value string) error {
+	v := strings.SplitN(value, "=", 2)
+	if len(v) != 2 {
+		return errors.New("Expected `OldName=NewName`")
+	}
+
+	header := httpHeaderName{
 		strings.TrimSpace(v[0]),
 		strings.TrimSpace(v[1]),
 	}

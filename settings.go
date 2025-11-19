@@ -262,6 +262,7 @@ func init() {
 	flag.StringVar(&Settings.KafkaTLSConfig.ClientKey, "kafka-tls-client-key", "", "Client Key for Kafka TLS Config (mandatory with to kafka-tls-client-cert and kafka-tls-client-key)")
 
 	flag.Var(&Settings.ModifierConfig.Headers, "http-set-header", "Inject additional headers to http request:\n\tgor --input-raw :8080 --output-http staging.com --http-set-header 'User-Agent: Gor'")
+	flag.Var(&Settings.ModifierConfig.HeadersRename, "http-rename-header", "Rename the request header. The value of the request header remains unchanged. If the request header is not found, it remains unchanged:\n\tgor --input-raw :8080 --output-http staging.com --http-rename-header 'X-Old-Header: X-New-Header'")
 	flag.Var(&Settings.ModifierConfig.HeaderRewrite, "http-rewrite-header", "Rewrite the request header based on a mapping:\n\tgor --input-raw :8080 --output-http staging.com --http-rewrite-header Host: (.*).example.com,$1.beta.example.com")
 	flag.Var(&Settings.ModifierConfig.Params, "http-set-param", "Set request url param, if param already exists it will be overwritten:\n\tgor --input-raw :8080 --output-http staging.com --http-set-param api_key=1")
 	flag.Var(&Settings.ModifierConfig.BodyParams, "http-set-body-param", "Set request body param for application/x-www-form-urlencoded or application/json requests, if param already exists it will be overwritten:\n\tgor --input-raw :8080 --output-http staging.com --http-set-body-param name=\"Li Lei\" --http-set-body-param id=1")

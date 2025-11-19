@@ -171,6 +171,40 @@ func SetHeader(payload, name, value []byte) []byte {
 	return AddHeader(payload, name, value)
 }
 
+// RenameHeader renames an existing header key while keeping the value unchanged.
+// If the header is not found, returns the original payload without modifications.
+func RenameHeader(payload, oldName, newName []byte) []byte {
+	// header(...) returns:
+	// val, headerStart, headerEnd, valueStart, valueEnd
+	_, hs, _, vs, _ := header(payload, oldName)
+
+	// header not found → return original payload
+	if hs == -1 {
+		return payload
+	}
+
+	// old header layout in payload:
+	// payload[hs : vs] = "Old-Header: "
+	// payload[vs : ve+1] = "value\r\n"
+
+	// We keep the value part intact and only replace the name part “Old-Header” with “New-Header”
+	//
+	// Example:
+	// Old header bytes:  Old-Header: value\r\n
+	//                    ^        ^  ^
+	//                    hs       vs ve
+	//
+	// We want:           New-Header: value\r\n
+
+	// Build new "New-Header: " prefix
+	prefix := make([]byte, len(newName)+2) // "<newName>: "
+	copy(prefix, newName)
+	copy(prefix[len(newName):], HeaderDelim)
+
+	// replace payload[hs : vs] with prefix
+	return byteutils.Replace(payload, hs, vs, prefix)
+}
+
 // AddHeader takes http payload and appends new header to the start of headers section
 // Returns modified request payload
 func AddHeader(payload, name, value []byte) []byte {
