@@ -305,14 +305,14 @@ func TestHTTPModifierSetHeader(t *testing.T) {
 
 func TestHTTPModifierRenameHeader(t *testing.T) {
 	filters := HTTPHeadersRename{}
-	filters.Set("User-Agent=User-Agent-rename")
+	filters.Set("User-Agent=User-Agent-renamed")
 
 	modifier := NewHTTPModifier(&HTTPModifierConfig{
 		HeadersRename: filters,
 	})
 
 	payload := []byte("POST /post HTTP/1.1\r\nUser-Agent: Gor\r\nContent-Length: 7\r\nHost: www.w3.org\r\n\r\na=1&b=2")
-	payloadAfter := []byte("POST /post HTTP/1.1\r\nUser-Agent-rename: Gor\r\nContent-Length: 7\r\nHost: www.w3.org\r\n\r\na=1&b=2")
+	payloadAfter := []byte("POST /post HTTP/1.1\r\nUser-Agent-renamed: Gor\r\nContent-Length: 7\r\nHost: www.w3.org\r\n\r\na=1&b=2")
 
 	if payload = modifier.Rewrite(payload); !bytes.Equal(payloadAfter, payload) {
 		t.Error("Should rename header name", string(payload))
