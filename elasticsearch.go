@@ -1,13 +1,19 @@
 package goreplay
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/buger/goreplay/proto"
+	"github.com/klauspost/compress/flate"
+	"github.com/klauspost/compress/zstd"
 
 	elastigo "github.com/IECspace/elastigo/lib"
 )
@@ -138,6 +144,15 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 	t := time.Now()
 	rtt := p.RttDurationToMs(stop.Sub(start))
 
+	// Unzip response body if needed
+	encoding := string(proto.Header(resp, []byte("Content-Encoding")))
+	respBody := proto.Body(resp)
+	respBodyUnzip, err := unzip(encoding, respBody)
+	if err != nil {
+		Debug(0, fmt.Sprintf("[ELASTIC-RESPONSE] Failed to unzip response body: %v", err))
+		respBodyUnzip = respBody
+	}
+
 	esResp := ESRequestResponse{
 		ReqPayloadID:         string(uuid),
 		ReqURL:               string(proto.Path(req)),
@@ -155,11 +170,11 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 		RespHost:             string(respHost),
 		RespStatus:           string(proto.Status(resp)),
 		RespProto:            string(proto.Method(resp)),
-		RespBody:             string(proto.Body(resp)),
+		RespBody:             string(respBodyUnzip),
 		RespContentLength:    string(proto.Header(resp, []byte("Content-Length"))),
 		RespContentType:      string(proto.Header(resp, []byte("Content-Type"))),
 		RespTransferEncoding: string(proto.Header(resp, []byte("Transfer-Encoding"))),
-		RespContentEncoding:  string(proto.Header(resp, []byte("Content-Encoding"))),
+		RespContentEncoding:  encoding,
 		RespExpires:          string(proto.Header(resp, []byte("Expires"))),
 		RespCacheControl:     string(proto.Header(resp, []byte("Cache-Control"))),
 		RespVary:             string(proto.Header(resp, []byte("Vary"))),
@@ -174,4 +189,32 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 		p.indexor.Index(p.Index, "RequestResponse", "", "", "", &t, j)
 	}
 	return
+}
+
+// unzip content based on content type
+func unzip(contentEncoding string, body []byte) ([]byte, error) {
+	if len(body) == 0 {
+		return body, nil
+	}
+	switch contentEncoding {
+	case "gzip":
+		reader, err := gzip.NewReader(bytes.NewReader(body))
+		if err != nil {
+			return body, err
+		}
+		defer reader.Close()
+		return io.ReadAll(reader)
+	case "deflate":
+		reader := flate.NewReader(bytes.NewReader(body))
+		defer reader.Close()
+		return io.ReadAll(reader)
+	case "zstd":
+		dec, err := zstd.NewReader(nil)
+		if err != nil {
+			return body, err
+		}
+		defer dec.Close()
+		return dec.DecodeAll(body, nil)
+	}
+	return body, nil
 }

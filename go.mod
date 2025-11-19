@@ -18,7 +18,12 @@ require (
 )
 
 require (
-	github.com/IECspace/elastigo v0.0.0-20251019040627-e10b8d1c77e3 // indirect
+	github.com/IECspace/elastigo v0.0.0-20251019040627-e10b8d1c77e3
+	github.com/prometheus/client_golang v1.12.2
+	lf.git.oa.mt/go-component/metrics v1.0.1
+)
+
+require (
 	github.com/araddon/gou v0.0.0-20211019181548-e7d08105776c // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bitly/go-hostpool v0.1.0 // indirect
@@ -68,7 +73,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -91,7 +95,6 @@ require (
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
-	lf.git.oa.mt/go-component/metrics v1.0.1 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
