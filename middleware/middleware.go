@@ -6,20 +6,25 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/buger/goreplay/proto"
 )
 
 type MSetting struct {
-	Concurrency int `json:"concurrency"`
+	Concurrency int  `json:"concurrency"`
+	Placeholder bool `json:"placeholder"`
 }
 
 var middleware MSetting
 
-// middleware 入口
+// middleware main function
 func main() {
 	flag.IntVar(&middleware.Concurrency, "concurrency", 1, "Number of concurrent requests to replay per input request. Default is 1")
+	flag.BoolVar(&middleware.Placeholder, "placeholder", false, "Do you want to enable placeholder replacement in requests. Default is false")
 	flag.Parse()
 
 	_, _ = fmt.Fprintf(os.Stderr, "Middleware started, concurrency=%d\n", middleware.Concurrency)
@@ -36,14 +41,14 @@ func main() {
 }
 
 func processLine(line string) {
-	// 解码十六进制数据
+	// decode hex string
 	decoded, err := hex.DecodeString(line)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Middleware error decoding hex: %v\n", err)
 		return
 	}
 
-	// 分割元数据和负载
+	// split metadata and payload
 	parts := strings.SplitN(string(decoded), "\n", 2)
 	if len(parts) < 2 {
 		_, _ = fmt.Fprintf(os.Stderr, "Middleware invalid message format\n")
@@ -53,46 +58,52 @@ func processLine(line string) {
 	metadata := parts[0]
 	payload := parts[1]
 
-	// 解析元数据
+	// analyze metadata
 	metaParts := strings.Split(metadata, " ")
 	if len(metaParts) < 3 {
 		_, _ = fmt.Fprintf(os.Stderr, "Middleware invalid metadata format\n")
 		return
 	}
 
-	// 只处理请求类型 (类型1)
+	// only process request data (type "1")
 	if metaParts[0] != "1" {
-		// 非请求数据直接转发
+		// if it is not request data, just output original line
 		outputLine(line)
 		return
 	}
 
-	// 并发复制请求
+	// replicate the request
 	replicateRequest(metaParts, payload)
 }
 
-// 复制请求
+// replicateRequest replicates the request based on concurrency setting
 func replicateRequest(originalMeta []string, payload string) {
 	var wg sync.WaitGroup
-	originalID := originalMeta[1] // 保存原始ID
+	originalID := originalMeta[1] // assuming the second field is the request ID, keep it same for all copies
 
 	for i := 0; i < middleware.Concurrency; i++ {
 		wg.Add(1)
 		go func(copyNum int) {
 			defer wg.Done()
 
-			// 为每个副本生成新的唯一ID
+			// generate new ID for the replicated request
 			newID := generateNewID(originalID, copyNum)
 
-			// 构建新的元数据
+			// generate new metadata
 			newMeta := make([]string, len(originalMeta))
 			copy(newMeta, originalMeta)
-			newMeta[1] = newID                                    // 替换ID
-			newMeta[2] = fmt.Sprintf("%d", time.Now().UnixNano()) // 更新时间戳
+			// update ID
+			newMeta[1] = newID
+			// update timestamp
+			newMeta[2] = fmt.Sprintf("%d", time.Now().UnixNano())
 
 			newMetadata := strings.Join(newMeta, " ")
 
-			// 重新编码消息
+			// if enabled placeholder replacement, do it here
+			if middleware.Placeholder {
+				payload = string(replacePlaceholders([]byte(payload)))
+			}
+			// encode and output
 			message := newMetadata + "\n" + payload
 			encoded := hex.EncodeToString([]byte(message))
 
@@ -102,7 +113,7 @@ func replicateRequest(originalMeta []string, payload string) {
 	wg.Wait()
 }
 
-// 根据原始gor请求id生成新的请id
+// generate new ID by appending copy number
 func generateNewID(originalID string, copyNum int) string {
 	return fmt.Sprintf("%s_%d", originalID, copyNum)
 }
@@ -110,4 +121,17 @@ func generateNewID(originalID string, copyNum int) string {
 // 标准输出请求内容，todo 后期如果有性能问题要考虑改造成writer := bufio.NewWriter(os.Stdout);defer writer.Flush()批量+定期刷新的方式替代fmt.Println
 func outputLine(encoded string) {
 	fmt.Println(encoded)
+}
+
+// replacePlaceholders replaces placeholders in the payload and updates Content-Length header if necessary
+func replacePlaceholders(payload []byte) []byte {
+	payload = proto.ReplacePlaceholders(payload)
+	// if Content-Length header exists, update its value
+	ct := proto.Header(payload, []byte("Content-Length"))
+	if ct == nil {
+		return payload
+	}
+	newCL := []byte(strconv.Itoa(len(proto.Body(payload))))
+	payload = proto.SetHeader(payload, []byte("Content-Length"), newCL)
+	return payload
 }

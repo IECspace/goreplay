@@ -507,3 +507,7 @@ func BenchmarkHasFullPayload(b *testing.B) {
 		}
 	}
 }
+
+func TestReplacePlaceholders(t *testing.T) {
+	t.Log(string(ReplacePlaceholders([]byte("Hello, {#string_1_2#}! You should pay {#float_0.1_1_2#} dollars."))))
+}

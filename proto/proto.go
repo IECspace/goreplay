@@ -293,7 +293,7 @@ func SetPathParam(payload, name, value []byte) []byte {
 	_, vs, ve := PathParam(payload, name)
 
 	// replace value
-	value = replacePlaceholders(value)
+	value = ReplacePlaceholders(value)
 
 	if vs != -1 { // If param found, replace its value and set new Path
 		newPath := make([]byte, len(path))
@@ -343,27 +343,24 @@ func SetBodyParam(payload, name, value []byte) []byte {
 	}
 
 	// replace value
-	value = replacePlaceholders(value)
+	value = ReplacePlaceholders(value)
 
 	var newBody []byte
 
-	// ---- Case 1: application/x-www-form-urlencoded ----
-	if bytes.HasPrefix(ct, []byte("application/x-www-form-urlencoded")) {
+	switch ct {
+	case []byte("application/x-www-form-urlencoded"):
 		tmpBody := make([]byte, len(body))
 		copy(tmpBody, body)
 		newBody = setFormURLEncodedBody(tmpBody, name, value)
 		return applyNewBodyWithUpdatedLength(payload, body, newBody)
-	}
-
-	// ---- Case 2: application/json ----
-	if bytes.HasPrefix(ct, []byte("application/json")) {
+	case []byte("application/json"):
 		tmpBody := make([]byte, len(body))
 		copy(tmpBody, body)
 		newBody = setJSONBody(tmpBody, name, value)
 		return applyNewBodyWithUpdatedLength(payload, body, newBody)
+	default:
+		// Other content types are not processed
 	}
-
-	// Other content types are not processed
 	return payload
 }
 
@@ -841,13 +838,13 @@ var hexTable = [128]byte{
 	'f': 15,
 }
 
-// replacePlaceholders replaces placeholders in the input byte slice.
+// ReplacePlaceholders replaces placeholders in the input byte slice.
 // Placeholders are in the format {#type_min_max#} or {#type_min_max_length#}(when type is float), e.g., {#int_0_100#}, {#float_0.1_1.2_2#}, {#string_5_10#}.
 // {#int_0_100#} represents an integer from 0 to 100
 // {#float_0.01_1.2_2#} represents a float from 0.01 to 1.2 with 2 decimal places
 // {#string_5_10#} represents a random string with length between 5 and 10
 // It returns a new byte slice with the placeholders replaced by generated values.
-func replacePlaceholders(in []byte) []byte {
+func ReplacePlaceholders(in []byte) []byte {
 	buf := make([]byte, 0, len(in))
 	i := 0
 
