@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -103,6 +104,7 @@ func replicateRequest(originalMeta []string, payload string) {
 			if middleware.Placeholder {
 				payload = string(replacePlaceholders([]byte(payload)))
 			}
+
 			// encode and output
 			message := newMetadata + "\n" + payload
 			encoded := hex.EncodeToString([]byte(message))
@@ -126,12 +128,15 @@ func outputLine(encoded string) {
 // replacePlaceholders replaces placeholders in the payload and updates Content-Length header if necessary
 func replacePlaceholders(payload []byte) []byte {
 	payload = proto.ReplacePlaceholders(payload)
-	// if Content-Length header exists, update its value
-	ct := proto.Header(payload, []byte("Content-Length"))
-	if ct == nil {
-		return payload
+
+	// If chunked, do NOT modify Content-Length
+	te := proto.Header(payload, []byte("Transfer-Encoding"))
+	chunked := len(te) > 0 && bytes.Contains(te, []byte("chunked"))
+
+	// update content-length only when NOT chunked
+	if !chunked {
+		newCL := []byte(strconv.Itoa(len(proto.Body(payload))))
+		payload = proto.SetHeader(payload, []byte("Content-Length"), newCL)
 	}
-	newCL := []byte(strconv.Itoa(len(proto.Body(payload))))
-	payload = proto.SetHeader(payload, []byte("Content-Length"), newCL)
 	return payload
 }
