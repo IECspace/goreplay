@@ -347,13 +347,13 @@ func SetBodyParam(payload, name, value []byte) []byte {
 
 	var newBody []byte
 
-	switch ct {
-	case []byte("application/x-www-form-urlencoded"):
+	switch string(ct) {
+	case "application/x-www-form-urlencoded":
 		tmpBody := make([]byte, len(body))
 		copy(tmpBody, body)
 		newBody = setFormURLEncodedBody(tmpBody, name, value)
 		return applyNewBodyWithUpdatedLength(payload, body, newBody)
-	case []byte("application/json"):
+	case "application/json":
 		tmpBody := make([]byte, len(body))
 		copy(tmpBody, body)
 		newBody = setJSONBody(tmpBody, name, value)
