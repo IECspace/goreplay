@@ -38,7 +38,7 @@ type ESPlugin struct {
 type ESRequestResponse struct {
 	ReqPayloadID         string `json:"Req_Payload-ID"`    // goreplay工具为录制的每个流量请求生成的唯一id,多个回放目标具有相同的Req_Payload-ID
 	ReqPayloadIndex      int    `json:"Req_Payload-Index"` // 当并发时，同1个ReqPayloadID会裂变成多个，以索引标识序号
-	ReqHost              string `json:"Resp_Host"`
+	ReqHost              string `json:"Req_Host"`
 	ReqURL               string `json:"Req_URL"`
 	ReqPath              string `json:"Req_Path"`
 	ReqMethod            string `json:"Req_Method"`
