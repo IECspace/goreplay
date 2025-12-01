@@ -251,6 +251,20 @@ func Path(payload []byte) []byte {
 	return payload[start : start+end]
 }
 
+// PurePath takes payload and returns pure path
+func PurePath(payload []byte) []byte {
+	fullPath := Path(payload)
+
+	// split using '?'
+	querySepIndex := bytes.IndexByte(fullPath, '?')
+	if querySepIndex == -1 {
+		return fullPath
+	}
+
+	// if there is querystring, return the part before ?
+	return fullPath[:querySepIndex]
+}
+
 // SetPath takes payload, sets new path and returns modified payload
 func SetPath(payload, path []byte) []byte {
 	if !HasTitle(payload) {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,11 +36,14 @@ type ESPlugin struct {
 }
 
 type ESRequestResponse struct {
-	ReqPayloadID         string `json:"Req_Payload-ID"` // goreplay工具为录制的每个流量请求生成的唯一id,多个回放目标具有相同的Req_Payload-ID
+	ReqPayloadID         string `json:"Req_Payload-ID"`    // goreplay工具为录制的每个流量请求生成的唯一id,多个回放目标具有相同的Req_Payload-ID
+	ReqPayloadIndex      int    `json:"Req_Payload-Index"` // 当并发时，同1个ReqPayloadID会裂变成多个，以索引标识序号
+	ReqHost              string `json:"Resp_Host"`
 	ReqURL               string `json:"Req_URL"`
+	ReqPath              string `json:"Req_Path"`
 	ReqMethod            string `json:"Req_Method"`
 	ReqTraceID           string `json:"Req_Trace-ID"`
-	ReqMSTrafficKey      string `json:"Req_MS-Traffic-Key"` // MirrorSphere流量标识（值为流量录制计划key）
+	ReqMSTrafficKey      string `json:"Req_MS-Traffic-Key"` // MirrorSphere流量标识（值为流量录制计划或回放计划key）
 	ReqUserAgent         string `json:"Req_User-Agent"`
 	ReqAcceptLanguage    string `json:"Req_Accept-Language,omitempty"`
 	ReqAccept            string `json:"Req_Accept,omitempty"`
@@ -48,8 +52,8 @@ type ESRequestResponse struct {
 	ReqConnection        string `json:"Req_Connection,omitempty"`
 	ReqCookies           string `json:"Req_Cookies,omitempty"`
 	ReqBody              string `json:"Req_Body,omitempty"`
-	RespHost             string `json:"Resp_Host"`
 	RespStatus           string `json:"Resp_Status"`
+	RespStatusCode       int    `json:"Resp_Status-Code"`
 	RespProto            string `json:"Resp_Proto,omitempty"`
 	RespBody             string `json:"Resp_Body"`
 	RespContentLength    string `json:"Resp_Content-Length,omitempty"`
@@ -136,7 +140,7 @@ func (p *ESPlugin) RttDurationToMs(d time.Duration) int64 {
 }
 
 // ResponseAnalyze send req and resp to ES
-func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop time.Time) {
+func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, reqHost []byte, start, stop time.Time) {
 	if len(resp) == 0 {
 		// nil http response - skipped elasticsearch export for this request
 		return
@@ -152,10 +156,25 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 		Debug(0, fmt.Sprintf("[ELASTIC-RESPONSE] Failed to unzip response body: %v", err))
 		respBodyUnzip = respBody
 	}
-
+	// split uuid, uuid contains payload id and index
+	payloadId := ""
+	payloadIndex := 0
+	splits := strings.Split(string(uuid), "_")
+	if len(splits) > 1 {
+		payloadId = splits[0]
+		payloadIndex, _ = strconv.Atoi(splits[len(splits)-1])
+	} else {
+		payloadId = string(uuid)
+	}
+	// statusCode
+	statusCode := 200
+	statusCode, _ = strconv.Atoi(string(proto.Status(resp)))
 	esResp := ESRequestResponse{
-		ReqPayloadID:         string(uuid),
+		ReqPayloadID:         payloadId,
+		ReqPayloadIndex:      payloadIndex,
+		ReqHost:              string(reqHost),
 		ReqURL:               string(proto.Path(req)),
+		ReqPath:              string(proto.PurePath(req)),
 		ReqMethod:            string(proto.Method(req)),
 		ReqTraceID:           string(proto.Header(req, []byte("X-Trace-ID"))),
 		ReqMSTrafficKey:      string(proto.Header(req, []byte("MS-Traffic-Key"))),
@@ -167,8 +186,8 @@ func (p *ESPlugin) ResponseAnalyze(uuid, req, resp, respHost []byte, start, stop
 		ReqConnection:        string(proto.Header(req, []byte("Connection"))),
 		ReqCookies:           string(proto.Header(req, []byte("Cookie"))),
 		ReqBody:              string(proto.Body(req)),
-		RespHost:             string(respHost),
 		RespStatus:           string(proto.Status(resp)),
+		RespStatusCode:       statusCode,
 		RespProto:            string(proto.Method(resp)),
 		RespBody:             string(respBodyUnzip),
 		RespContentLength:    string(proto.Header(resp, []byte("Content-Length"))),
