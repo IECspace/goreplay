@@ -372,7 +372,17 @@ type HTTPClient struct {
 func NewHTTPClient(config *HTTPOutputConfig) *HTTPClient {
 	client := new(HTTPClient)
 	client.config = config
-	var transport *http.Transport
+
+	// 创建自定义的运输工具，禁用自动解压缩，以便我们能够正确地处理响应体的解压缩
+	transport := &http.Transport{
+		// 禁用自动解压缩，保留原始响应体
+		DisableCompression: true,
+	}
+
+	if config.SkipVerify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	client.Client = &http.Client{
 		Timeout: client.config.Timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -385,12 +395,7 @@ func NewHTTPClient(config *HTTPOutputConfig) *HTTPClient {
 			Debug(2, fmt.Sprintf("[HTTPCLIENT] HTTP redirects from %q to %q with %q", lastReq.Host, req.Host, resp.Status))
 			return nil
 		},
-	}
-	if config.SkipVerify {
-		// clone to avoid modifying global default RoundTripper
-		transport = http.DefaultTransport.(*http.Transport).Clone()
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		client.Client.Transport = transport
+		Transport: transport, // 使用我们自定义的运输工具
 	}
 
 	return client
