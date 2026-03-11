@@ -1,22 +1,16 @@
 package goreplay
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/buger/goreplay/proto"
-	"github.com/klauspost/compress/flate"
-	"github.com/klauspost/compress/zstd"
-
 	elastigo "github.com/IECspace/elastigo/lib"
+	"github.com/buger/goreplay/proto"
 )
 
 type ESUriErorr struct{}
@@ -215,25 +209,27 @@ func unzip(contentEncoding string, body []byte) ([]byte, error) {
 	if len(body) == 0 {
 		return body, nil
 	}
-	switch contentEncoding {
-	case "gzip":
-		reader, err := gzip.NewReader(bytes.NewReader(body))
-		if err != nil {
-			return body, err
-		}
-		defer reader.Close()
-		return io.ReadAll(reader)
-	case "deflate":
-		reader := flate.NewReader(bytes.NewReader(body))
-		defer reader.Close()
-		return io.ReadAll(reader)
-	case "zstd":
-		dec, err := zstd.NewReader(nil)
-		if err != nil {
-			return body, err
-		}
-		defer dec.Close()
-		return dec.DecodeAll(body, nil)
-	}
 	return body, nil
+	// You can add the "--prettify-http" parameter to the gor command to decompress the content. This is a best practice without knowing it yourself.
+	//switch contentEncoding {
+	//case "gzip":
+	//	reader, err := gzip.NewReader(bytes.NewReader(body))
+	//	if err != nil {
+	//		return body, err
+	//	}
+	//	defer reader.Close()
+	//	return io.ReadAll(reader)
+	//case "deflate":
+	//	reader := flate.NewReader(bytes.NewReader(body))
+	//	defer reader.Close()
+	//	return io.ReadAll(reader)
+	//case "zstd":
+	//	dec, err := zstd.NewReader(nil)
+	//	if err != nil {
+	//		return body, err
+	//	}
+	//	defer dec.Close()
+	//	return dec.DecodeAll(body, nil)
+	//}
+	//return body, nil
 }
